@@ -390,6 +390,85 @@
       padding: 20px;
     }
 
+    /* ── Steps banner ── */
+    .steps-banner {
+      background: #6c63ff18;
+      border: 1px solid #6c63ff44;
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      color: #c4c1ff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .steps-banner strong { color: #fff; }
+
+    .steps-banner .step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-arrow { color: var(--border); }
+
+    /* ── Quick links ── */
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .quick-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 16px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .quick-link:hover { border-color: var(--accent); background: var(--surface2); }
+    .quick-link .ql-icon { font-size: 1rem; }
+    .quick-link .ql-label { opacity: 0.6; font-size: 0.75rem; margin-left: 2px; }
+
+    .demo-btn {
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      padding: 9px 16px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .demo-btn:hover { border-color: var(--accent); color: var(--text); }
+
     @media (max-width: 600px) {
       .score-hero { flex-direction: column; }
       .hero-info { width: 100%; }
@@ -410,6 +489,21 @@
 
   <!-- ══ DASHBOARD ══ -->
   <div class="dashboard" id="dashboard">
+
+    <!-- Steps banner -->
+    <div class="steps-banner">
+      <strong>How to use:</strong>
+      <span class="step"><span class="step-num">1</span> Click a platform link below to open the search</span>
+      <span class="step-arrow">→</span>
+      <span class="step"><span class="step-num">2</span> Find the business and note its rating &amp; review count</span>
+      <span class="step-arrow">→</span>
+      <span class="step"><span class="step-num">3</span> Enter the numbers in the cards below</span>
+      <span class="step-arrow">→</span>
+      <span class="step"><span class="step-num">4</span> Hit <strong>Recalculate Score</strong></span>
+    </div>
+
+    <!-- Quick links -->
+    <div class="quick-links" id="quickLinks"></div>
 
     <!-- Score Hero -->
     <div class="score-hero">
@@ -605,10 +699,91 @@
     currentBiz = name;
     document.getElementById('heroName').textContent = name;
     document.getElementById('dashboard').classList.add('visible');
+    buildQuickLinks(name);
     buildPlatformCards();
     buildWebsiteToggles();
     recalculate();
     document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function buildQuickLinks(name) {
+    const q = encodeURIComponent(name);
+    const links = [
+      { icon: '⭐', label: 'Yelp',        sub: 'rating + reviews', href: `https://www.yelp.com/search?find_desc=${q}` },
+      { icon: '🔍', label: 'Google',      sub: 'rating + reviews', href: `https://www.google.com/search?q=${q}+reviews` },
+      { icon: '👤', label: 'Facebook',    sub: 'page + activity',  href: `https://www.facebook.com/search/pages/?q=${q}` },
+      { icon: '✅', label: 'Trustpilot',  sub: 'trust score',      href: `https://www.trustpilot.com/search?query=${q}` },
+      { icon: '🌐', label: 'Website',     sub: 'find official site',href: `https://www.google.com/search?q=${q}+official+website` },
+    ];
+    const wrap = document.getElementById('quickLinks');
+    wrap.innerHTML = links.map(l =>
+      `<a class="quick-link" href="${l.href}" target="_blank" rel="noopener">
+        <span class="ql-icon">${l.icon}</span>
+        <span>${l.label} <span class="ql-label">· ${l.sub}</span></span>
+      </a>`
+    ).join('') +
+      `<button class="demo-btn" onclick="loadDemo()">▶ Load demo data</button>`;
+  }
+
+  function loadDemo() {
+    // Example: a well-rated Italian restaurant
+    setStar('yelp', 'rating', 4);
+    setSelectVal('yelp', 'reviewCount', 187);
+    setSelectVal('yelp', 'claimed', 'Yes');
+    setSelectVal('yelp', 'responseRate', 'Some');
+
+    setStar('google', 'rating', 4);
+    setSelectVal('google', 'reviewCount', 312);
+    setSelectVal('google', 'verified', 'Yes');
+    setSelectVal('google', 'photos', 'Many');
+    setSelectVal('google', 'responseRate', 'Sometimes');
+
+    setSelectVal('facebook', 'pageExists', 'Yes');
+    setSelectVal('facebook', 'followers', 1840);
+    setSelectVal('facebook', 'verified', 'No');
+    setSelectVal('facebook', 'adTransp', 'Active ads');
+    setSelectVal('facebook', 'lastPost', 'Within a month');
+
+    setSelectVal('trustpilot', 'listed', 'No');
+    setStar('trustpilot', 'rating', 0);
+    setSelectVal('trustpilot', 'reviewCount', 0);
+    setSelectVal('trustpilot', 'verified', 'No');
+    setSelectVal('trustpilot', 'responds', 'Never');
+
+    websiteChecks.ssl        = true;
+    websiteChecks.mobile     = true;
+    websiteChecks.contact    = true;
+    websiteChecks.speed      = false;
+    websiteChecks.cta        = true;
+    websiteChecks.social     = true;
+    websiteChecks.professional = false;
+
+    // Sync UI for numbers and selects
+    syncFormUI();
+    buildWebsiteToggles();
+    recalculate();
+  }
+
+  function setSelectVal(pid, fid, val) {
+    vals[pid][fid] = val;
+  }
+
+  function syncFormUI() {
+    PLATFORMS.forEach(p => {
+      p.fields.forEach(f => {
+        if (f.type === 'stars') {
+          const v = vals[p.id][f.id];
+          const stars = document.querySelectorAll(`#stars_${p.id}_${f.id} span`);
+          stars.forEach(s => s.classList.toggle('active', +s.dataset.v <= v));
+        } else if (f.type === 'select') {
+          const sel = document.querySelector(`[onchange="setVal('${p.id}','${f.id}',this.value)"]`);
+          if (sel) sel.value = vals[p.id][f.id];
+        } else {
+          const inp = document.querySelector(`[oninput="setVal('${p.id}','${f.id}',+this.value)"]`);
+          if (inp) inp.value = vals[p.id][f.id] || '';
+        }
+      });
+    });
   }
 
   // ─── Build platform cards ─────────────────────────────────────────────────────
