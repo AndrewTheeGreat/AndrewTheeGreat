@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Business Analyzer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c63ff;
+      --accent2: #00d2ff;
+      --text: #e8eaf6;
+      --muted: #7b83b0;
+      --green: #00e676;
+      --yellow: #ffd740;
+      --red: #ff5252;
+      --orange: #ff9100;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+
+    .business-input-row {
+      display: flex;
+      gap: 12px;
+      max-width: 700px;
+      margin: 0 auto 32px;
+    }
+
+    .business-input-row input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .business-input-row input:focus { border-color: var(--accent); }
+
+    .business-input-row button {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+
+    .business-input-row button:hover { opacity: 0.85; }
+
+    /* ── Layout ── */
+    .dashboard { display: none; }
+    .dashboard.visible { display: block; }
+
+    .score-hero {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 24px;
+    }
+
+    .gauge-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .gauge-wrap svg { display: block; }
+
+    .gauge-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gauge-score {
+      font-size: 2.6rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .gauge-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero-info h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .verdict {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .verdict.excellent { background: #00e67622; color: var(--green); border: 1px solid var(--green); }
+    .verdict.good      { background: #6c63ff22; color: var(--accent); border: 1px solid var(--accent); }
+    .verdict.fair      { background: #ffd74022; color: var(--yellow); border: 1px solid var(--yellow); }
+    .verdict.poor      { background: #ff910022; color: var(--orange); border: 1px solid var(--orange); }
+    .verdict.bad       { background: #ff525222; color: var(--red); border: 1px solid var(--red); }
+
+    .hero-bars { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 380px; }
+
+    .mini-bar-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+    .mini-bar-label { width: 90px; color: var(--muted); flex-shrink: 0; }
+    .mini-bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+    .mini-bar-fill  { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+    .mini-bar-val   { width: 34px; text-align: right; font-weight: 600; font-size: 0.78rem; }
+
+    /* ── Platform cards ── */
+    .platforms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .platform-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .platform-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .platform-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .platform-card-header h3 { font-size: 1rem; font-weight: 600; }
+    .platform-score-badge {
+      margin-left: auto;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .field-group { margin-bottom: 12px; }
+    .field-group label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
+
+    .field-group input,
+    .field-group select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field-group input:focus,
+    .field-group select:focus { border-color: var(--accent); }
+
+    .field-group select option { background: var(--surface2); }
+
+    .star-input {
+      display: flex;
+      gap: 4px;
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+
+    .star-input span { transition: color 0.1s; color: var(--border); }
+    .star-input span.active { color: var(--yellow); }
+
+    /* ── Website metrics ── */
+    .website-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .website-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toggle-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .toggle-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      user-select: none;
+    }
+
+    .toggle-item.checked {
+      border-color: var(--accent);
+      background: #6c63ff18;
+    }
+
+    .toggle-item input[type="checkbox"] { display: none; }
+
+    .toggle-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      transition: background 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .toggle-item.checked .toggle-dot {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toggle-label { font-size: 0.85rem; line-height: 1.2; }
+    .toggle-pts   { margin-left: auto; font-size: 0.75rem; color: var(--muted); }
+
+    /* ── Insights ── */
+    .insights-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .insights-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .insights-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .insight-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.875rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
+    .insight-item.positive { background: #00e67610; color: #a5f3c0; }
+    .insight-item.warning  { background: #ffd74010; color: #ffe082; }
+    .insight-item.negative { background: #ff525210; color: #ff8a80; }
+    .insight-item .icon    { flex-shrink: 0; }
+
+    /* ── Recalc button ── */
+    .recalc-row {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .recalc-row button {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 13px 36px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .recalc-row button:hover { opacity: 0.85; }
+
+    /* ── History ── */
+    .history-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .history-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 14px; }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .history-table th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 500;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #1e2235;
+    }
+
+    .history-table tr:last-child td { border-bottom: none; }
+
+    .score-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    .empty-history {
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-align: center;
+      padding: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .score-hero { flex-direction: column; }
+      .hero-info { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Local Business Analyzer</h1>
+    <p>Score any business 0–100 across Yelp, Google, Facebook, Trustpilot &amp; website quality</p>
+  </header>
+
+  <div class="business-input-row">
+    <input id="bizName" type="text" placeholder="Business name (e.g. Mario's Pizza)" />
+    <button onclick="initBusiness()">Analyze</button>
+  </div>
+
+  <!-- ══ DASHBOARD ══ -->
+  <div class="dashboard" id="dashboard">
+
+    <!-- Score Hero -->
+    <div class="score-hero">
+      <div class="gauge-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="58" fill="none" stroke="#22263a" stroke-width="14"/>
+          <circle id="gaugeArc" cx="70" cy="70" r="58" fill="none"
+            stroke="url(#gaugeGrad)" stroke-width="14"
+            stroke-linecap="round"
+            stroke-dasharray="364.4"
+            stroke-dashoffset="364.4"
+            transform="rotate(-90 70 70)"
+            style="transition: stroke-dashoffset 1s ease"/>
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#6c63ff"/>
+              <stop offset="100%" stop-color="#00d2ff"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="gauge-center">
+          <span class="gauge-score" id="gaugeScore">0</span>
+          <span class="gauge-label">/ 100</span>
+        </div>
+      </div>
+
+      <div class="hero-info">
+        <h2 id="heroName">Business Name</h2>
+        <div class="verdict" id="verdictBadge">—</div>
+        <div class="hero-bars" id="heroBars"></div>
+      </div>
+    </div>
+
+    <!-- Platform Cards -->
+    <div class="platforms-grid" id="platformsGrid"></div>
+
+    <!-- Website Quality -->
+    <div class="website-card">
+      <h3>🌐 Website Quality <span style="color:var(--muted);font-size:0.8rem;font-weight:400">(max 20 pts)</span></h3>
+      <div class="toggle-grid" id="websiteToggles"></div>
+    </div>
+
+    <!-- Recalc -->
+    <div class="recalc-row">
+      <button onclick="recalculate()">Recalculate Score</button>
+    </div>
+
+    <!-- Insights -->
+    <div class="insights-card">
+      <h3>💡 Insights &amp; Recommendations</h3>
+      <div class="insights-list" id="insightsList"></div>
+    </div>
+
+    <!-- History -->
+    <div class="history-card">
+      <h3>📋 Analysis History</h3>
+      <div id="historyBody"></div>
+    </div>
+  </div>
+
+  <script>
+  // ─── State ───────────────────────────────────────────────────────────────────
+  let history = JSON.parse(localStorage.getItem('biz_history') || '[]');
+  let currentBiz = '';
+
+  const PLATFORMS = [
+    {
+      id: 'yelp',
+      name: 'Yelp',
+      icon: '⭐',
+      color: '#ff1a1a',
+      bg: '#ff1a1a22',
+      maxPts: 20,
+      fields: [
+        { id: 'rating',        label: 'Star Rating (0–5)',   type: 'stars',  max: 5  },
+        { id: 'reviewCount',   label: 'Number of Reviews',   type: 'number', max: 999999, placeholder: '0' },
+        { id: 'claimed',       label: 'Listing Claimed?',    type: 'select', options: ['No','Yes'] },
+        { id: 'responseRate',  label: 'Owner Response Rate', type: 'select', options: ['None','Some','Most','All'] },
+      ],
+      score(v) {
+        let s = 0;
+        s += (v.rating / 5) * 10;
+        s += Math.min(v.reviewCount / 200, 1) * 4;
+        if (v.claimed === 'Yes') s += 3;
+        const rr = ['None','Some','Most','All'].indexOf(v.responseRate);
+        s += (rr / 3) * 3;
+        return Math.round(Math.min(s, 20));
+      }
+    },
+    {
+      id: 'google',
+      name: 'Google Reviews',
+      icon: '🔍',
+      color: '#4285f4',
+      bg: '#4285f422',
+      maxPts: 25,
+      fields: [
+        { id: 'rating',      label: 'Star Rating (0–5)',    type: 'stars',  max: 5 },
+        { id: 'reviewCount', label: 'Number of Reviews',    type: 'number', max: 999999, placeholder: '0' },
+        { id: 'verified',    label: 'Google Verified?',     type: 'select', options: ['No','Yes'] },
+        { id: 'photos',      label: 'Has Business Photos?', type: 'select', options: ['No','A few','Many'] },
+        { id: 'responseRate',label: 'Responds to Reviews?', type: 'select', options: ['Never','Sometimes','Usually','Always'] },
+      ],
+      score(v) {
+        let s = 0;
+        s += (v.rating / 5) * 12;
+        s += Math.min(v.reviewCount / 300, 1) * 6;
+        if (v.verified === 'Yes') s += 3;
+        const ph = ['No','A few','Many'].indexOf(v.photos);
+        s += (ph / 2) * 2;
+        const rr = ['Never','Sometimes','Usually','Always'].indexOf(v.responseRate);
+        s += (rr / 3) * 2;
+        return Math.round(Math.min(s, 25));
+      }
+    },
+    {
+      id: 'facebook',
+      name: 'Facebook',
+      icon: '👤',
+      color: '#1877f2',
+      bg: '#1877f222',
+      maxPts: 15,
+      fields: [
+        { id: 'pageExists',   label: 'Business Page Exists?', type: 'select', options: ['No','Yes'] },
+        { id: 'followers',    label: 'Followers / Likes',      type: 'number', max: 9999999, placeholder: '0' },
+        { id: 'verified',     label: 'Page Verified?',         type: 'select', options: ['No','Yes'] },
+        { id: 'adTransp',     label: 'Ad Library Transparency', type: 'select', options: ['No ads','Active ads','Transparent history'] },
+        { id: 'lastPost',     label: 'Last Post Activity',     type: 'select', options: ['Never','6+ months','1–6 months','Within a month','This week'] },
+      ],
+      score(v) {
+        let s = 0;
+        if (v.pageExists === 'No') return 0;
+        s += 3;
+        s += Math.min(v.followers / 5000, 1) * 2;
+        if (v.verified === 'Yes') s += 3;
+        const ad = ['No ads','Active ads','Transparent history'].indexOf(v.adTransp);
+        s += (ad / 2) * 3;
+        const lp = ['Never','6+ months','1–6 months','Within a month','This week'].indexOf(v.lastPost);
+        s += (lp / 4) * 4;
+        return Math.round(Math.min(s, 15));
+      }
+    },
+    {
+      id: 'trustpilot',
+      name: 'Trustpilot',
+      icon: '✅',
+      color: '#00b67a',
+      bg: '#00b67a22',
+      maxPts: 20,
+      fields: [
+        { id: 'listed',      label: 'Listed on Trustpilot?', type: 'select', options: ['No','Yes'] },
+        { id: 'rating',      label: 'TrustScore (0–5)',       type: 'stars',  max: 5 },
+        { id: 'reviewCount', label: 'Number of Reviews',      type: 'number', max: 999999, placeholder: '0' },
+        { id: 'verified',    label: 'Verified Company?',      type: 'select', options: ['No','Yes'] },
+        { id: 'responds',    label: 'Responds to Reviews?',   type: 'select', options: ['Never','Sometimes','Always'] },
+      ],
+      score(v) {
+        let s = 0;
+        if (v.listed === 'No') return 0;
+        s += (v.rating / 5) * 10;
+        s += Math.min(v.reviewCount / 100, 1) * 4;
+        if (v.verified === 'Yes') s += 4;
+        const rp = ['Never','Sometimes','Always'].indexOf(v.responds);
+        s += (rp / 2) * 2;
+        return Math.round(Math.min(s, 20));
+      }
+    },
+  ];
+
+  const WEBSITE_CHECKS = [
+    { id: 'ssl',       label: 'HTTPS / SSL Certificate', pts: 4 },
+    { id: 'mobile',    label: 'Mobile-Friendly Design',  pts: 3 },
+    { id: 'contact',   label: 'Contact Info Visible',    pts: 3 },
+    { id: 'speed',     label: 'Loads Fast (< 3s)',       pts: 3 },
+    { id: 'cta',       label: 'Clear Call to Action',    pts: 3 },
+    { id: 'social',    label: 'Social Media Links',      pts: 2 },
+    { id: 'professional', label: 'Professional Design',  pts: 2 },
+  ];
+
+  // Store field values per platform
+  const vals = {};
+  PLATFORMS.forEach(p => { vals[p.id] = {}; p.fields.forEach(f => { vals[p.id][f.id] = f.type === 'stars' ? 0 : (f.options ? f.options[0] : 0); }); });
+  const websiteChecks = {};
+  WEBSITE_CHECKS.forEach(c => { websiteChecks[c.id] = false; });
+
+  // ─── Init ─────────────────────────────────────────────────────────────────────
+  function initBusiness() {
+    const name = document.getElementById('bizName').value.trim();
+    if (!name) return;
+    currentBiz = name;
+    document.getElementById('heroName').textContent = name;
+    document.getElementById('dashboard').classList.add('visible');
+    buildPlatformCards();
+    buildWebsiteToggles();
+    recalculate();
+    document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ─── Build platform cards ─────────────────────────────────────────────────────
+  function buildPlatformCards() {
+    const grid = document.getElementById('platformsGrid');
+    grid.innerHTML = '';
+    PLATFORMS.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'platform-card';
+      card.innerHTML = `
+        <div class="platform-card-header">
+          <div class="platform-icon" style="background:${p.bg};color:${p.color}">${p.icon}</div>
+          <h3>${p.name}</h3>
+          <span class="platform-score-badge" id="pscore_${p.id}" style="color:${p.color}">0/${p.maxPts}</span>
+        </div>
+        ${p.fields.map(f => buildField(p.id, f)).join('')}
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function buildField(pid, f) {
+    if (f.type === 'stars') {
+      return `
+        <div class="field-group">
+          <label>${f.label}</label>
+          <div class="star-input" id="stars_${pid}_${f.id}">
+            ${[1,2,3,4,5].map(i => `<span data-v="${i}" onclick="setStar('${pid}','${f.id}',${i})">★</span>`).join('')}
+          </div>
+        </div>`;
+    }
+    if (f.type === 'select') {
+      return `
+        <div class="field-group">
+          <label>${f.label}</label>
+          <select onchange="setVal('${pid}','${f.id}',this.value)">
+            ${f.options.map(o => `<option>${o}</option>`).join('')}
+          </select>
+        </div>`;
+    }
+    return `
+      <div class="field-group">
+        <label>${f.label}</label>
+        <input type="number" min="0" max="${f.max}" placeholder="${f.placeholder || ''}"
+          oninput="setVal('${pid}','${f.id}',+this.value)" />
+      </div>`;
+  }
+
+  function buildWebsiteToggles() {
+    const wrap = document.getElementById('websiteToggles');
+    wrap.innerHTML = '';
+    WEBSITE_CHECKS.forEach(c => {
+      const el = document.createElement('label');
+      el.className = 'toggle-item' + (websiteChecks[c.id] ? ' checked' : '');
+      el.innerHTML = `
+        <input type="checkbox" ${websiteChecks[c.id] ? 'checked' : ''} onchange="toggleCheck('${c.id}',this)"/>
+        <div class="toggle-dot"></div>
+        <span class="toggle-label">${c.label}</span>
+        <span class="toggle-pts">+${c.pts}</span>
+      `;
+      wrap.appendChild(el);
+    });
+  }
+
+  // ─── Setters ──────────────────────────────────────────────────────────────────
+  function setStar(pid, fid, v) {
+    vals[pid][fid] = v;
+    const stars = document.querySelectorAll(`#stars_${pid}_${fid} span`);
+    stars.forEach(s => s.classList.toggle('active', +s.dataset.v <= v));
+  }
+
+  function setVal(pid, fid, v) { vals[pid][fid] = v; }
+
+  function toggleCheck(id, el) {
+    websiteChecks[id] = el.checked;
+    el.closest('.toggle-item').classList.toggle('checked', el.checked);
+  }
+
+  // ─── Score ────────────────────────────────────────────────────────────────────
+  function recalculate() {
+    const platformScores = {};
+    let total = 0;
+
+    PLATFORMS.forEach(p => {
+      const s = p.score(vals[p.id]);
+      platformScores[p.id] = { score: s, max: p.maxPts, name: p.name, color: p.color };
+      total += s;
+      document.getElementById(`pscore_${p.id}`).textContent = `${s}/${p.maxPts}`;
+    });
+
+    const webScore = WEBSITE_CHECKS.reduce((acc, c) => acc + (websiteChecks[c.id] ? c.pts : 0), 0);
+    total += webScore;
+    total = Math.min(total, 100);
+
+    // Gauge
+    const arc = document.getElementById('gaugeArc');
+    const circ = 2 * Math.PI * 58;
+    arc.style.strokeDashoffset = circ - (circ * total / 100);
+    arc.setAttribute('stroke', scoreColor(total));
+    document.getElementById('gaugeScore').textContent = total;
+    document.getElementById('gaugeScore').style.color = scoreColor(total);
+
+    // Verdict
+    const vb = document.getElementById('verdictBadge');
+    const [vClass, vText] = verdictOf(total);
+    vb.className = `verdict ${vClass}`;
+    vb.textContent = vText;
+
+    // Mini bars
+    const bars = document.getElementById('heroBars');
+    bars.innerHTML = [
+      ...PLATFORMS.map(p => ({ label: p.name, score: platformScores[p.id].score, max: p.maxPts, color: p.color })),
+      { label: 'Website', score: webScore, max: 20, color: 'var(--accent2)' }
+    ].map(b => `
+      <div class="mini-bar-row">
+        <span class="mini-bar-label">${b.label}</span>
+        <div class="mini-bar-track">
+          <div class="mini-bar-fill" style="width:${(b.score/b.max)*100}%;background:${b.color}"></div>
+        </div>
+        <span class="mini-bar-val" style="color:${b.color}">${b.score}/${b.max}</span>
+      </div>`).join('');
+
+    // Insights
+    buildInsights(platformScores, webScore, total);
+
+    // Save to history
+    saveHistory(total, platformScores, webScore);
+  }
+
+  function scoreColor(s) {
+    if (s >= 80) return 'var(--green)';
+    if (s >= 65) return 'var(--accent)';
+    if (s >= 50) return 'var(--yellow)';
+    if (s >= 35) return 'var(--orange)';
+    return 'var(--red)';
+  }
+
+  function verdictOf(s) {
+    if (s >= 80) return ['excellent', '⭐ Excellent Business'];
+    if (s >= 65) return ['good',      '✔ Good Standing'];
+    if (s >= 50) return ['fair',      '~ Fair – Room to Grow'];
+    if (s >= 35) return ['poor',      '⚠ Needs Improvement'];
+    return ['bad', '✖ Serious Concerns'];
+  }
+
+  // ─── Insights ─────────────────────────────────────────────────────────────────
+  function buildInsights(ps, webScore, total) {
+    const items = [];
+
+    // Yelp
+    const yr = vals.yelp.rating;
+    if (yr >= 4.5) items.push({ type: 'positive', icon: '✓', msg: `Strong Yelp rating of ${yr}/5 stars — a reliable social trust signal.` });
+    else if (yr < 3.5 && yr > 0) items.push({ type: 'negative', icon: '✗', msg: `Low Yelp rating (${yr}/5). Negative reviews may deter customers significantly.` });
+    if (vals.yelp.claimed !== 'Yes') items.push({ type: 'warning', icon: '!', msg: 'Yelp listing is unclaimed. Claiming it gives owner control and improves visibility.' });
+
+    // Google
+    const gr = vals.google.rating;
+    if (gr >= 4.5) items.push({ type: 'positive', icon: '✓', msg: `Google rating of ${gr}/5 is excellent — Google is the #1 review source.` });
+    else if (gr < 4 && gr > 0) items.push({ type: 'warning', icon: '!', msg: `Google rating is ${gr}/5. Improving this has the highest ROI for local SEO.` });
+    if (vals.google.verified !== 'Yes') items.push({ type: 'warning', icon: '!', msg: 'Not Google Verified. A Google Business Profile should be verified for local search ranking.' });
+    if (+vals.google.reviewCount < 20) items.push({ type: 'warning', icon: '!', msg: `Only ${vals.google.reviewCount} Google reviews. Businesses with 50+ reviews convert 270% better.` });
+
+    // Facebook
+    if (vals.facebook.pageExists === 'No') items.push({ type: 'negative', icon: '✗', msg: 'No Facebook business page found. Missing a key channel for paid and organic reach.' });
+    else {
+      const lp = vals.facebook.lastPost;
+      if (lp === 'Never' || lp === '6+ months') items.push({ type: 'warning', icon: '!', msg: `Facebook page is stale (last post: ${lp}). Inactivity signals an unengaged brand.` });
+    }
+
+    // Trustpilot
+    if (vals.trustpilot.listed === 'No') items.push({ type: 'warning', icon: '!', msg: 'Not on Trustpilot. Useful for industries where buyers research before purchasing.' });
+    else if (vals.trustpilot.verified !== 'Yes') items.push({ type: 'warning', icon: '!', msg: 'Trustpilot account is unverified. Verification adds credibility to the profile.' });
+
+    // Website
+    if (!websiteChecks.ssl) items.push({ type: 'negative', icon: '✗', msg: 'No SSL certificate detected. HTTPS is a Google ranking factor and builds buyer trust.' });
+    if (!websiteChecks.mobile) items.push({ type: 'negative', icon: '✗', msg: 'Site may not be mobile-friendly. Over 60% of local searches happen on mobile devices.' });
+    if (!websiteChecks.contact) items.push({ type: 'warning', icon: '!', msg: 'Contact information not prominently visible. This increases bounce rate from interested visitors.' });
+    if (!websiteChecks.cta) items.push({ type: 'warning', icon: '!', msg: 'No clear call-to-action on the website. Visitors need obvious next steps to convert.' });
+    if (webScore >= 18) items.push({ type: 'positive', icon: '✓', msg: 'Website meets nearly all quality benchmarks — strong foundation for digital presence.' });
+
+    // Overall
+    if (total >= 80) items.push({ type: 'positive', icon: '✓', msg: 'Overall score is excellent. This business has a strong, trustworthy online presence.' });
+    else if (total < 40) items.push({ type: 'negative', icon: '✗', msg: 'Overall score is very low. Significant investment in online presence is recommended before running paid ads.' });
+
+    if (items.length === 0) items.push({ type: 'positive', icon: '✓', msg: 'Looking solid so far! Enter more details above for deeper insights.' });
+
+    document.getElementById('insightsList').innerHTML = items.map(i =>
+      `<div class="insight-item ${i.type}"><span class="icon">${i.icon}</span><span>${i.msg}</span></div>`
+    ).join('');
+  }
+
+  // ─── History ──────────────────────────────────────────────────────────────────
+  function saveHistory(total, ps, webScore) {
+    const existing = history.findIndex(h => h.name === currentBiz);
+    const entry = {
+      name: currentBiz,
+      score: total,
+      date: new Date().toLocaleDateString(),
+      breakdown: {
+        Yelp: ps.yelp.score,
+        Google: ps.google.score,
+        Facebook: ps.facebook.score,
+        Trustpilot: ps.trustpilot.score,
+        Website: webScore,
+      }
+    };
+    if (existing >= 0) history[existing] = entry;
+    else history.unshift(entry);
+    history = history.slice(0, 20);
+    localStorage.setItem('biz_history', JSON.stringify(history));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const wrap = document.getElementById('historyBody');
+    if (!history.length) {
+      wrap.innerHTML = '<div class="empty-history">No analyses saved yet.</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Business</th>
+            <th>Score</th>
+            <th>Yelp</th>
+            <th>Google</th>
+            <th>FB</th>
+            <th>TP</th>
+            <th>Web</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${history.map(h => `
+            <tr>
+              <td>${h.name}</td>
+              <td><span class="score-pill" style="background:${scoreColor(h.score)}22;color:${scoreColor(h.score)}">${h.score}</span></td>
+              <td>${h.breakdown.Yelp ?? '—'}</td>
+              <td>${h.breakdown.Google ?? '—'}</td>
+              <td>${h.breakdown.Facebook ?? '—'}</td>
+              <td>${h.breakdown.Trustpilot ?? '—'}</td>
+              <td>${h.breakdown.Website ?? '—'}</td>
+              <td style="color:var(--muted)">${h.date}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  renderHistory();
+  </script>
+</body>
+</html>
