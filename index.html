@@ -403,7 +403,8 @@
   </header>
 
   <div class="business-input-row">
-    <input id="bizName" type="text" placeholder="Business name (e.g. Mario's Pizza)" />
+    <input id="bizName" type="text" placeholder="Business name (e.g. Mario's Pizza)"
+      onkeydown="if(event.key==='Enter') initBusiness()" />
     <button onclick="initBusiness()">Analyze</button>
   </div>
 
@@ -471,7 +472,10 @@
 
   <script>
   // ─── State ───────────────────────────────────────────────────────────────────
-  let history = JSON.parse(localStorage.getItem('biz_history') || '[]');
+  function lsGet(key, fallback) { try { return JSON.parse(localStorage.getItem(key) || fallback); } catch(e) { return JSON.parse(fallback); } }
+  function lsSet(key, val)      { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+
+  let bizHistory = lsGet('biz_history', '[]');
   let currentBiz = '';
 
   const PLATFORMS = [
@@ -735,11 +739,11 @@
   }
 
   function scoreColor(s) {
-    if (s >= 80) return 'var(--green)';
-    if (s >= 65) return 'var(--accent)';
-    if (s >= 50) return 'var(--yellow)';
-    if (s >= 35) return 'var(--orange)';
-    return 'var(--red)';
+    if (s >= 80) return '#00e676';
+    if (s >= 65) return '#6c63ff';
+    if (s >= 50) return '#ffd740';
+    if (s >= 35) return '#ff9100';
+    return '#ff5252';
   }
 
   function verdictOf(s) {
@@ -798,7 +802,7 @@
 
   // ─── History ──────────────────────────────────────────────────────────────────
   function saveHistory(total, ps, webScore) {
-    const existing = history.findIndex(h => h.name === currentBiz);
+    const existing = bizHistory.findIndex(h => h.name === currentBiz);
     const entry = {
       name: currentBiz,
       score: total,
@@ -811,16 +815,16 @@
         Website: webScore,
       }
     };
-    if (existing >= 0) history[existing] = entry;
-    else history.unshift(entry);
-    history = history.slice(0, 20);
-    localStorage.setItem('biz_history', JSON.stringify(history));
+    if (existing >= 0) bizHistory[existing] = entry;
+    else bizHistory.unshift(entry);
+    bizHistory = bizHistory.slice(0, 20);
+    lsSet('biz_history', bizHistory);
     renderHistory();
   }
 
   function renderHistory() {
     const wrap = document.getElementById('historyBody');
-    if (!history.length) {
+    if (!bizHistory.length) {
       wrap.innerHTML = '<div class="empty-history">No analyses saved yet.</div>';
       return;
     }
@@ -839,7 +843,7 @@
           </tr>
         </thead>
         <tbody>
-          ${history.map(h => `
+          ${bizHistory.map(h => `
             <tr>
               <td>${h.name}</td>
               <td><span class="score-pill" style="background:${scoreColor(h.score)}22;color:${scoreColor(h.score)}">${h.score}</span></td>
